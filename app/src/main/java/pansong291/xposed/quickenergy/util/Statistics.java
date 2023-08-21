@@ -74,9 +74,10 @@ public class Statistics {
             jn_answerQuestionList = "answerQuestionList", jn_syncStepList = "syncStepList",
             jn_exchangeList = "exchangeList", jn_beachTodayList = "beachTodayList",
             jn_questionHint = "questionHint", jn_donationEggList = "donationEggList",
-            jn_memberSignInList = "memberSignInList",
-            jn_kbSignIn = "kbSignIn", jn_exchangeDoubleCard = "exchangeDoubleCard",
-            jn_exchangeTimes = "exchangeTimes", jn_dailyAnswerList = "dailyAnswerList", jn_doubleTimes = "doubleTimes";
+            jn_memberSignInList = "memberSignInList", jn_kbSignIn = "kbSignIn",
+            jn_exchangeDoubleCard = "exchangeDoubleCard", jn_exchangeTimes = "exchangeTimes",
+            jn_dailyAnswerList = "dailyAnswerList", jn_doubleTimes = "doubleTimes",
+            jn_SpreadManureList = "SpreadManureList";
 
     private TimeStatistics year;
     private TimeStatistics month;
@@ -101,6 +102,7 @@ public class Statistics {
     private ArrayList<FeedFriendLog> feedFriendLogList;
     private Set<String> dailyAnswerList;
     private ArrayList<String> donationEggList;
+    private ArrayList<String> SpreadManureList;
 
     // other
     private ArrayList<String> memberSignInList;
@@ -235,17 +237,7 @@ public class Statistics {
     }
 
     public static boolean canReserveToday(String id, int count) {
-        Statistics stat = getStatistics();
-        int index = -1;
-        for (int i = 0; i < stat.reserveLogList.size(); i++)
-            if (stat.reserveLogList.get(i).projectId.equals(id)) {
-                index = i;
-                break;
-            }
-        if (index < 0)
-            return true;
-        ReserveLog rl = stat.reserveLogList.get(index);
-        return rl.applyCount < count;
+        return getReserveTimes(id) < count;
     }
 
     public static void reserveToday(String id, int count) {
@@ -421,6 +413,19 @@ public class Statistics {
         }
     }
 
+    public static boolean canSpreadManureToday(String uid) {
+        Statistics stat = getStatistics();
+        return !stat.SpreadManureList.contains(uid);
+    }
+
+    public static void spreadManureToday(String uid) {
+        Statistics stat = getStatistics();
+        if (!stat.SpreadManureList.contains(uid)) {
+            stat.SpreadManureList.add(uid);
+            save();
+        }
+    }
+
     public static boolean canExchangeToday(String uid) {
         Statistics stat = getStatistics();
         return !stat.exchangeList.contains(uid);
@@ -532,11 +537,13 @@ public class Statistics {
 
     public static void resetToday() {
         Statistics stat = getStatistics();
-        String[] dateStr = Log.getFormatDate().split("-");
+        String formatDate = Log.getFormatDate();
+        String[] dateStr = formatDate.split("-");
         int ye = Integer.parseInt(dateStr[0]);
         int mo = Integer.parseInt(dateStr[1]);
         int da = Integer.parseInt(dateStr[2]);
 
+        Log.recordLog("原：" + stat.year.time + "-" + stat.month.time + "-" + stat.day.time + "；新：" + formatDate);
         if (ye > stat.year.time) {
             stat.year.reset(ye);
             stat.month.reset(mo);
@@ -565,6 +572,7 @@ public class Statistics {
         stat.feedFriendLogList.clear();
         stat.questionHint = null;
         stat.donationEggList.clear();
+        stat.SpreadManureList.clear();
         stat.memberSignInList.clear();
         stat.kbSignIn = 0;
         stat.exchangeDoubleCard = 0;
@@ -591,6 +599,8 @@ public class Statistics {
             stat.answerQuestionList = new ArrayList<>();
         if (stat.donationEggList == null)
             stat.donationEggList = new ArrayList<>();
+        if (stat.SpreadManureList == null)
+            stat.SpreadManureList = new ArrayList<>();
         if (stat.memberSignInList == null)
             stat.memberSignInList = new ArrayList<>();
         if (stat.feedFriendLogList == null)
@@ -760,10 +770,21 @@ public class Statistics {
                 JSONArray ja = jo.getJSONArray(jn_donationEggList);
                 for (int i = 0; i < ja.length(); i++) {
                     stat.donationEggList.add(ja.getString(i));
+
+                }
+            }
+
+            stat.SpreadManureList = new ArrayList<>();
+            if (jo.has(jn_SpreadManureList)) {
+                JSONArray ja = jo.getJSONArray(jn_SpreadManureList);
+                for (int i = 0; i < ja.length(); i++) {
+                    stat.SpreadManureList.add(ja.getString(i));
+
                 }
             }
 
             stat.memberSignInList = new ArrayList<>();
+
             if (jo.has(jn_memberSignInList)) {
                 JSONArray ja = jo.getJSONArray(jn_memberSignInList);
                 for (int i = 0; i < ja.length(); i++) {
@@ -796,6 +817,7 @@ public class Statistics {
             Log.printStackTrace(TAG, t);
             if (json != null) {
                 Log.i(TAG, "统计文件格式有误，已重置统计文件并备份原文件");
+                Log.infoChanged("统计文件格式有误，已重置统计文件并备份原文件", json);
                 FileUtils.write2File(json, FileUtils.getBackupFile(FileUtils.getStatisticsFile()));
             }
             stat = defInit();
@@ -803,6 +825,7 @@ public class Statistics {
         String formatted = statistics2Json(stat);
         if (!formatted.equals(json)) {
             Log.i(TAG, "重新格式化 statistics.json");
+            Log.infoChanged("重新格式化 statistics.json", json);
             FileUtils.write2File(formatted, FileUtils.getStatisticsFile());
         }
         return stat;
@@ -921,6 +944,12 @@ public class Statistics {
             jo.put(jn_donationEggList, ja);
 
             ja = new JSONArray();
+            for (int i = 0; i < stat.SpreadManureList.size(); i++) {
+                ja.put(stat.SpreadManureList.get(i));
+            }
+            jo.put(jn_SpreadManureList, ja);
+
+            ja = new JSONArray();
             for (int i = 0; i < stat.memberSignInList.size(); i++) {
                 ja.put(stat.memberSignInList.get(i));
             }
@@ -947,7 +976,9 @@ public class Statistics {
     }
 
     private static void save() {
-        FileUtils.write2File(statistics2Json(getStatistics()), FileUtils.getStatisticsFile());
+        String json = statistics2Json(getStatistics());
+        Log.infoChanged("保存 statistics.json", json);
+        FileUtils.write2File(json, FileUtils.getStatisticsFile());
     }
 
 }

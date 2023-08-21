@@ -14,7 +14,6 @@ import pansong291.xposed.quickenergy.util.Statistics;
 public class Reserve {
     private static final String TAG = Reserve.class.getCanonicalName();
 
-
     public static void start() {
         if (!Config.reserve() && !Config.beach())
             return;
@@ -26,7 +25,7 @@ public class Reserve {
                 try {
                     while (FriendIdMap.currentUid == null || FriendIdMap.currentUid.isEmpty())
                         Thread.sleep(100);
-                    if (Config.reserve() ) {
+                    if (Config.reserve()) {
                         animalReserve();
                     }
 
@@ -144,10 +143,10 @@ public class Reserve {
                     Statistics.reserveToday(projectId, count);
                     break;
                 }
-                Thread.sleep(200);
+                Thread.sleep(300);
                 canApply = queryTreeForExchange(projectId);
                 if (!canApply) {
-                    Statistics.reserveToday(projectId, count);
+                    // Statistics.reserveToday(projectId, count);
                     break;
                 } else {
                     Thread.sleep(200);
@@ -177,7 +176,8 @@ public class Reserve {
                     jo = ja.getJSONObject(i);
                     if (!jo.has("templateSubType"))
                         continue;
-                    if (!"BEACH".equals(jo.getString("templateSubType")))
+                    if (!"BEACH".equals(jo.getString("templateSubType"))
+                            && !"COOPERATE_SEA_TREE".equals(jo.getString("templateSubType")))
                         continue;
                     if (!"AVAILABLE".equals(jo.getString("applyAction")))
                         continue;
@@ -272,10 +272,10 @@ public class Reserve {
                     Statistics.beachToday(cultivationCode);
                     break;
                 }
-                Thread.sleep(200);
+                Thread.sleep(300);
                 canApply = queryCultivationDetail(cultivationCode, projectCode);
                 if (!canApply) {
-                    Statistics.beachToday(cultivationCode);
+                    // Statistics.beachToday(cultivationCode);
                     break;
                 } else {
                     Thread.sleep(200);

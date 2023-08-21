@@ -23,6 +23,8 @@ public class AntOcean {
             @Override
             public void run() {
                 try {
+                    while (FriendIdMap.currentUid == null || FriendIdMap.currentUid.isEmpty())
+                    Thread.sleep(100);
                     String s = AntOceanRpcCall.queryOceanStatus();
                     JSONObject jo = new JSONObject(s);
                     if ("SUCCESS".equals(jo.getString("resultCode"))) {
@@ -177,7 +179,7 @@ public class AntOcean {
                     boolean canCombine = true;
                     for (int j = 0; j < attachReward.length(); j++) {
                         JSONObject detail = attachReward.getJSONObject(j);
-                        if (detail.optInt("count") == 0) {
+                        if (detail.optInt("count", 0) == 0) {
                             canCombine = false;
                             break;
                         }
@@ -385,7 +387,7 @@ public class AntOcean {
                     jo = new JSONObject(AntOceanRpcCall.finishTask(sceneCode, taskType));
                     if (jo.getBoolean("success")) {
                         String taskTitle = bizInfo.optString("taskTitle", taskType);
-                        Log.forest("完成任务🧾[" + taskTitle + "]");
+                        Log.forest("海洋任务🧾[" + taskTitle + "]");
                     } else {
                         Log.recordLog(jo.getString("desc"), jo.toString());
                     }
